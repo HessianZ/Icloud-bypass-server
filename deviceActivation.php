@@ -1,44 +1,38 @@
 <?php
-$serial= $_POST["AppleSerialNumber"];
-$guid= $_POST["guid"];
-$activation= $_POST["activation-info"];
+$serial = $_POST["AppleSerialNumber"];
+$guid = $_POST["guid"];
+$activation = $_POST["activation-info"];
+
+
+function getElementValue($dom, $find) {
+    $keys = $dom->getElementsByTagName('key');
+
+    foreach ($keys as $key) {
+        if ($key->textContent == $find) {
+            $next = $key->nextSibling;
+            while ($next->nodeType != XML_ELEMENT_NODE) {
+                $next = $next->nextSibling;
+            }
+            return $next->textContent;
+        }
+    }
+
+    return null;
+}
+
 $xml = $activation;
 $dom = new DOMDocument;
 $dom->loadXML($xml);
-$books = $dom->getElementsByTagName('data');
-$cont=1;
-$activationBase64="";
-foreach ($books as $book) {
-	if($cont==1)
-	$activationBase64= $book->nodeValue;
-	$cont++;
-    
-}
-$activationDecoded= base64_decode($activationBase64);
+$activationBase64 = getElementValue($dom, "ActivationInfoXML");
+
+$activationDecoded = base64_decode($activationBase64);
 $dom = new DOMDocument;
 $dom->loadXML($activationDecoded);
-$books = $dom->getElementsByTagName('string');
-$datas = $dom->getElementsByTagName('data');
-$cont=1;
-$contd=1;
-$activationRamdomess="9";
-$uniqueDiviceID="1";
-$deviceCertRequest="big boy";
-foreach ($books as $book) {
-	if($cont==1)
-	$activationRamdomess= $book->nodeValue;
-	if($cont==12)
-	$uniqueDiviceID= $book->nodeValue;
-	$cont++;
-    
-}
-foreach ($datas as $data) {
-	if($contd==1)
-	$deviceCertRequest=base64_decode( $data->nodeValue);
-	
-	$contd++;
-    
-}
+$activationRamdomess = getElementValue($dom, "ActivationRandomness") ?: "9";
+$uniqueDiviceID = getElementValue($dom, "UniqueDeviceID") ?: "1";
+$deviceCertRequest = getElementValue($dom, "DeviceCertRequest") ?: "big boy";
+$deviceCertRequest = base64_decode($deviceCertRequest);
+
 
 $privkey = array(file_get_contents('certs/iPhoneDeviceCA_private.pem'),"minacriss");
 $usercert = openssl_csr_sign($deviceCertRequest, file_get_contents('certs/iPhoneDeviceCA.pem'),$privkey,365,NULL,'6');
